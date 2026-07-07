@@ -3,9 +3,13 @@ package main
 import (
 	"go-rest-api/database"
 	"go-rest-api/events"
-	"go-rest-api/events/postgres"
-	"go-rest-api/events/rest"
-	"go-rest-api/events/sqlite"
+	eventspostgres "go-rest-api/events/postgres"
+	eventsrest "go-rest-api/events/rest"
+	eventssqlite "go-rest-api/events/sqlite"
+	"go-rest-api/users"
+	userspostgres "go-rest-api/users/postgres"
+	usersrest "go-rest-api/users/rest"
+	userssqlite "go-rest-api/users/sqlite"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,18 +19,27 @@ func main() {
 	database.CreateTables()
 
 	// Wire the layers: infrastructure -> application -> transport.
-	// The concrete repository is picked based on the driver InitDB connected to.
+	// The concrete repositories are picked based on the driver InitDB connected to.
 	var eventRepo events.EventRepository
+	var userRepo users.UserRepository
 	switch database.Driver {
 	case "postgres":
-		eventRepo = postgres.NewRepository(database.DB)
+		eventRepo = eventspostgres.NewRepository(database.DB)
+		userRepo = userspostgres.NewRepository(database.DB)
 	default:
-		eventRepo = sqlite.NewRepository(database.DB)
+		eventRepo = eventssqlite.NewRepository(database.DB)
+		userRepo = userssqlite.NewRepository(database.DB)
 	}
+
 	eventService := events.NewService(eventRepo)
-	eventHandler := rest.NewHandler(eventService)
+	eventHandler := eventsrest.NewHandler(eventService)
+
+	userService := users.NewService(userRepo)
+	userHandler := usersrest.NewHandler(userService)
 
 	server := gin.Default()
-	rest.RegisterRoutes(server.Group("/api/v1/"), eventHandler)
+	api := server.Group("/api/v1/")
+	eventsrest.RegisterRoutes(api, eventHandler)
+	usersrest.RegisterRoutes(api, userHandler)
 	server.Run(":8082") // listen and serve on 0.0.0.0:8082
 }

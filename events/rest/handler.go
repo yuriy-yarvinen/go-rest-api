@@ -31,6 +31,7 @@ func (h *Handler) list(context *gin.Context) {
 func (h *Handler) getByID(context *gin.Context) {
 	id, ok := parseID(context)
 	if !ok {
+		context.JSON(http.StatusNotFound, gin.H{"error": "Invalid event ID"})
 		return
 	}
 	event, err := h.service.GetByID(id)
@@ -61,6 +62,7 @@ func (h *Handler) create(context *gin.Context) {
 func (h *Handler) update(context *gin.Context) {
 	id, ok := parseID(context)
 	if !ok {
+		context.JSON(http.StatusNotFound, gin.H{"error": "Invalid event ID"})
 		return
 	}
 	var event events.Event

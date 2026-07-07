@@ -66,30 +66,45 @@ func CreateTables() {
 	var createTableSQL string
 	switch Driver {
 	case "postgres":
+		// users must be created before events: events.user_id has a FOREIGN
+		// KEY on users(id), and Postgres validates that at CREATE TABLE time.
 		createTableSQL = `
+			CREATE TABLE IF NOT EXISTS users (
+				id SERIAL PRIMARY KEY,
+				email VARCHAR(100) NOT NULL UNIQUE,
+				password VARCHAR(255) NOT NULL
+		);
 			CREATE TABLE IF NOT EXISTS events (
 				id SERIAL PRIMARY KEY,
 				name VARCHAR(100) NOT NULL,
 				description TEXT,
 				location VARCHAR(100) NOT NULL,
 				date_time TIMESTAMP,
-				user_id INTEGER
+				user_id INTEGER,
+				FOREIGN KEY (user_id) REFERENCES users(id)
 		);`
 	default:
 		createTableSQL = `
+			CREATE TABLE IF NOT EXISTS users (
+				"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+				"email" VARCHAR(100) NOT NULL UNIQUE,
+				"password" VARCHAR(255) NOT NULL
+		);
 			CREATE TABLE IF NOT EXISTS events (
 				"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 				"name" VARCHAR(100) NOT NULL,
 				"description" TEXT,
 				"location" VARCHAR(100) NOT NULL,
 				"date_time" DATETIME,
-				"user_id" INTEGER
+				"user_id" INTEGER,
+				FOREIGN KEY (user_id) REFERENCES users(id)
 		);`
 	}
 
-	statement, err := DB.Prepare(createTableSQL)
-	if err != nil {
+	// DB.Prepare only allows a single statement (Postgres uses the extended
+	// query protocol for it); DB.Exec uses the simple protocol, which allows
+	// the multiple semicolon-separated CREATE TABLE statements above.
+	if _, err := DB.Exec(createTableSQL); err != nil {
 		panic(err)
 	}
-	statement.Exec()
 }

@@ -6,6 +6,8 @@ go get github.com/mattn/go-sqlite3
 
 go get github.com/lib/pq
 
+go get golang.org/x/crypto
+
 ## Database
 
 The database driver is selected with the `DB_DRIVER` env var: `sqlite` (default) or `postgres`.
