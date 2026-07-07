@@ -1,28 +1,32 @@
 package main
 
 import (
-	"net/http"
+	"go-rest-api/database"
+	"go-rest-api/events"
+	"go-rest-api/events/postgres"
+	"go-rest-api/events/rest"
+	"go-rest-api/events/sqlite"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
+	database.InitDB()
+	database.CreateTables()
+
+	// Wire the layers: infrastructure -> application -> transport.
+	// The concrete repository is picked based on the driver InitDB connected to.
+	var eventRepo events.EventRepository
+	switch database.Driver {
+	case "postgres":
+		eventRepo = postgres.NewRepository(database.DB)
+	default:
+		eventRepo = sqlite.NewRepository(database.DB)
+	}
+	eventService := events.NewService(eventRepo)
+	eventHandler := rest.NewHandler(eventService)
+
 	server := gin.Default()
-	server.GET("/ping", func(ginCtx *gin.Context) {
-		ginCtx.JSON(http.StatusOK, gin.H{
-			"message": "pong",
-		})
-	})
-
-	server.GET("/events", getEvents) // Register the /events route with the getEvents handler
-	server.Run(":8081")              // listen and serve on 0.0.0.0:8081
-}
-
-func getEvents(context *gin.Context) {
-	// Implement your logic to retrieve events here
-	events := []string{"Event 1", "Event 2", "Event 3"} // Example events
-
-	context.JSON(http.StatusOK, gin.H{
-		"events": events,
-	})
+	rest.RegisterRoutes(server.Group("/api/v1/"), eventHandler)
+	server.Run(":8082") // listen and serve on 0.0.0.0:8082
 }

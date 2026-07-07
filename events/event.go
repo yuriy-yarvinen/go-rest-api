@@ -1,0 +1,30 @@
+package events
+
+import (
+	"errors"
+	"time"
+)
+
+// ErrEventNotFound is returned by the repository when an event does not exist.
+var ErrEventNotFound = errors.New("event not found")
+
+// Event is the domain entity. It knows nothing about HTTP or SQL.
+type Event struct {
+	ID          int64     `json:"id"`
+	Name        string    `json:"name" binding:"required"`
+	Description string    `json:"description"`
+	Location    string    `json:"location" binding:"required"`
+	DateTime    time.Time `json:"date_time"`
+	UserID      int64     `json:"user_id" binding:"required"`
+}
+
+// EventRepository is defined by the domain and implemented by the
+// infrastructure layer. The domain depends on this abstraction, never on a
+// concrete database.
+type EventRepository interface {
+	Create(event *Event) error
+	GetAll() ([]Event, error)
+	GetByID(id int64) (*Event, error)
+	Update(event *Event) error
+	Delete(id int64) error
+}
