@@ -51,7 +51,7 @@ curl -i -X POST "$BASE/events" \
 ```bash
 curl -i -X POST "$BASE/events" \
   -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFsaWNlQGdtYWlsLmNvbSIsImV4cCI6MTc4NDA3NTI5MywidXNlcklEIjoxfQ.zKvUuBDFmow_t1vogOqxrAhJRZ4BdBacKY5EKJUWZ1Q" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{
         "name": "Launch",
         "description": "Test event",
