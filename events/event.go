@@ -15,7 +15,10 @@ type Event struct {
 	Description string    `json:"description"`
 	Location    string    `json:"location" binding:"required"`
 	DateTime    time.Time `json:"date_time"`
-	UserID      int64     `json:"user_id" binding:"required"`
+	// UserID is the owning user. It's always set server-side from the
+	// authenticated token, never trusted from client input — see
+	// events/rest.Handler.create/update — so it carries no binding tag.
+	UserID int64 `json:"user_id"`
 }
 
 // EventRepository is defined by the domain and implemented by the

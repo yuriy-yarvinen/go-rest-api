@@ -74,7 +74,7 @@ func CreateTables() {
 				location VARCHAR(100) NOT NULL,
 				date_time TIMESTAMP,
 				user_id INTEGER,
-				FOREIGN KEY (user_id) REFERENCES users(id)
+				FOREIGN KEY (user_id) REFERENCES users(id) on DELETE CASCADE
 		);`
 	default:
 		createTableSQL = `
@@ -90,7 +90,7 @@ func CreateTables() {
 				"location" VARCHAR(100) NOT NULL,
 				"date_time" DATETIME,
 				"user_id" INTEGER,
-				FOREIGN KEY (user_id) REFERENCES users(id)
+				FOREIGN KEY (user_id) REFERENCES users(id) on DELETE CASCADE
 		);`
 	}
 

@@ -20,6 +20,15 @@ func NewRepository(db *sql.DB) *Repository {
 }
 
 func (r *Repository) Register(user *users.User) error {
+	checkQuery := "SELECT id FROM users WHERE email = $1"
+	var existingID int64
+	err := r.db.QueryRow(checkQuery, user.Email).Scan(&existingID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+	if existingID != 0 {
+		return users.ErrUserAlreadyExists
+	}
 	const query = `
 		INSERT INTO users (email, password)
 		VALUES ($1, $2)

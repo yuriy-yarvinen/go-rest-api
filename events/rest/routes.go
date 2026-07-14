@@ -7,7 +7,11 @@ import "github.com/gin-gonic/gin"
 func RegisterRoutes(router *gin.RouterGroup, h *Handler, authRequired gin.HandlerFunc) {
 	router.GET("events", h.list)
 	router.GET("events/:id", h.getByID)
-	router.POST("events", authRequired, h.create)
-	router.PUT("events/:id", authRequired, h.update)
-	router.DELETE("events/:id", authRequired, h.delete)
+
+	authenticated := router.Group("/")
+	authenticated.Use(authRequired)
+	authenticated.POST("events", h.create)
+	authenticated.PUT("events/:id", h.update)
+	authenticated.DELETE("events/:id", h.delete)
+
 }

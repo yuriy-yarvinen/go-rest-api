@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"go-rest-api/authctx"
 	"go-rest-api/users"
 	"go-rest-api/utils"
 
@@ -31,7 +32,7 @@ func newTestRouter(service *users.Service) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.GET("/protected", AuthRequired(service), func(c *gin.Context) {
-		userID, ok := UserID(c)
+		userID, ok := authctx.UserID(c)
 		if !ok {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "no userID in context"})
 			return

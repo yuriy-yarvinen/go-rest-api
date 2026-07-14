@@ -7,6 +7,7 @@ import (
 
 // ErrUserNotFound is returned by the repository when an User does not exist.
 var ErrUserNotFound = errors.New("User not found")
+var ErrUserAlreadyExists = errors.New("User already exists")
 
 // User is the domain entity. It knows nothing about HTTP or SQL.
 type User struct {

@@ -44,18 +44,19 @@ curl -i -X POST "$BASE/events" \
 
 ### Создать событие
 
-Требует `Authorization: Bearer $TOKEN`.
+Требует `Authorization: Bearer $TOKEN`. `user_id` в теле игнорируется —
+владельцем всегда становится аутентифицированный пользователь из токена,
+а не то, что прислал клиент.
 
 ```bash
 curl -i -X POST "$BASE/events" \
   -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFsaWNlQGdtYWlsLmNvbSIsImV4cCI6MTc4NDA3NTI5MywidXNlcklEIjoxfQ.zKvUuBDFmow_t1vogOqxrAhJRZ4BdBacKY5EKJUWZ1Q" \
   -d '{
         "name": "Launch",
         "description": "Test event",
         "location": "Remote",
-        "date_time": "2026-08-01T10:00:00Z",
-        "user_id": 1
+        "date_time": "2026-08-01T10:00:00Z"
       }'
 ```
 
@@ -77,7 +78,9 @@ curl -i "$BASE/events/1"
 
 ### Обновить событие
 
-Требует `Authorization: Bearer $TOKEN`.
+Требует `Authorization: Bearer $TOKEN` **и** что событие принадлежит этому
+пользователю — иначе `403`. `user_id` в теле игнорируется, владелец через
+update не меняется.
 
 ```bash
 curl -i -X PUT "$BASE/events/1" \
@@ -87,17 +90,29 @@ curl -i -X PUT "$BASE/events/1" \
         "name": "Launch v2",
         "description": "Updated",
         "location": "Remote",
-        "date_time": "2026-08-02T10:00:00Z",
-        "user_id": 1
+        "date_time": "2026-08-02T10:00:00Z"
       }'
 ```
 
 ### Удалить событие
 
-Требует `Authorization: Bearer $TOKEN`.
+Требует `Authorization: Bearer $TOKEN` **и** владение событием — иначе `403`.
 
 ```bash
 curl -i -X DELETE "$BASE/events/1" -H "Authorization: Bearer $TOKEN"
+```
+
+### Чужое событие — ожидаем `403`
+
+`TOKEN_OTHER` — токен другого пользователя, не владеющего событием `1`.
+
+```bash
+curl -i -X PUT "$BASE/events/1" \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $TOKEN_OTHER" \
+  -d '{"name": "Hijack", "description": "x", "location": "Remote", "date_time": "2026-08-01T10:00:00Z"}'
+
+curl -i -X DELETE "$BASE/events/1" -H "Authorization: Bearer $TOKEN_OTHER"
 ```
 
 ## Users
@@ -188,7 +203,7 @@ TOKEN=$(curl -s -X POST "$BASE/login" \
 EVENT_ID=$(curl -s -X POST "$BASE/events" \
   -H 'Content-Type: application/json' \
   -H "Authorization: Bearer $TOKEN" \
-  -d "{\"name\":\"Launch\",\"description\":\"Test\",\"location\":\"Remote\",\"date_time\":\"2026-08-01T10:00:00Z\",\"user_id\":$USER_ID}" \
+  -d '{"name":"Launch","description":"Test","location":"Remote","date_time":"2026-08-01T10:00:00Z"}' \
   | jq -r .id)
 echo "created event $EVENT_ID"
 
@@ -201,5 +216,5 @@ echo "reusing token after user deletion (expect 401):"
 curl -s -o /dev/null -w '%{http_code}\n' -X POST "$BASE/events" \
   -H 'Content-Type: application/json' \
   -H "Authorization: Bearer $TOKEN" \
-  -d "{\"name\":\"ShouldFail\",\"description\":\"x\",\"location\":\"Remote\",\"date_time\":\"2026-08-01T10:00:00Z\",\"user_id\":$USER_ID}"
+  -d '{"name":"ShouldFail","description":"x","location":"Remote","date_time":"2026-08-01T10:00:00Z"}'
 ```

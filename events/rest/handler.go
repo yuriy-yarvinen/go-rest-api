@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"go-rest-api/authctx"
 	"go-rest-api/events"
 
 	"github.com/gin-gonic/gin"
@@ -52,6 +53,16 @@ func (h *Handler) create(context *gin.Context) {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	userID, ok := authctx.UserID(context)
+	if !ok {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Missing authenticated user"})
+		return
+	}
+	// The owner is always the authenticated caller, never whatever the
+	// client put in the request body.
+	event.UserID = userID
+
 	if err := h.service.Create(&event); err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save event"})
 		return
@@ -65,19 +76,37 @@ func (h *Handler) update(context *gin.Context) {
 		context.JSON(http.StatusNotFound, gin.H{"error": "Invalid event ID"})
 		return
 	}
+
+	userID, ok := authctx.UserID(context)
+	if !ok {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Missing authenticated user"})
+		return
+	}
+
+	existing, err := h.service.GetByID(id)
+	if errors.Is(err, events.ErrEventNotFound) {
+		context.JSON(http.StatusNotFound, gin.H{"error": "Event not found"})
+		return
+	}
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve event"})
+		return
+	}
+	if existing.UserID != userID {
+		context.JSON(http.StatusForbidden, gin.H{"error": "You can only update your own events"})
+		return
+	}
+
 	var event events.Event
 	if err := context.ShouldBindJSON(&event); err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	event.ID = id
+	// Ownership isn't transferable through a plain update.
+	event.UserID = existing.UserID
 
-	err := h.service.Update(&event)
-	if errors.Is(err, events.ErrEventNotFound) {
-		context.JSON(http.StatusNotFound, gin.H{"error": "Event not found"})
-		return
-	}
-	if err != nil {
+	if err := h.service.Update(&event); err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update event"})
 		return
 	}
@@ -89,12 +118,28 @@ func (h *Handler) delete(context *gin.Context) {
 	if !ok {
 		return
 	}
-	err := h.service.Delete(id)
+
+	userID, ok := authctx.UserID(context)
+	if !ok {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Missing authenticated user"})
+		return
+	}
+
+	existing, err := h.service.GetByID(id)
 	if errors.Is(err, events.ErrEventNotFound) {
 		context.JSON(http.StatusNotFound, gin.H{"error": "Event not found"})
 		return
 	}
 	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve event"})
+		return
+	}
+	if existing.UserID != userID {
+		context.JSON(http.StatusForbidden, gin.H{"error": "You can only delete your own events"})
+		return
+	}
+
+	if err := h.service.Delete(id); err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete event"})
 		return
 	}

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"go-rest-api/authctx"
 	"go-rest-api/users"
 	"go-rest-api/utils"
 
@@ -53,7 +54,14 @@ func (h *Handler) register(context *gin.Context) {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to register user"})
 		return
 	}
-	context.JSON(http.StatusCreated, user)
+
+	token, err := utils.GenerateJWT(user.Email, user.ID)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate JWT"})
+		return
+	}
+
+	context.JSON(http.StatusOK, gin.H{"message": "Registration successful", "user": user, "token": token})
 }
 
 func (h *Handler) getByID(context *gin.Context) {
@@ -62,6 +70,17 @@ func (h *Handler) getByID(context *gin.Context) {
 		context.JSON(http.StatusNotFound, gin.H{"error": "Invalid user ID"})
 		return
 	}
+
+	userID, ok := authctx.UserID(context)
+	if !ok {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Missing authenticated user"})
+		return
+	}
+	if id != userID {
+		context.JSON(http.StatusForbidden, gin.H{"error": "You can only delete your own account"})
+		return
+	}
+
 	user, err := h.service.GetByID(id)
 	if errors.Is(err, users.ErrUserNotFound) {
 		context.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
@@ -85,6 +104,17 @@ func (h *Handler) update(context *gin.Context) {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	userID, ok := authctx.UserID(context)
+	if !ok {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Missing authenticated user"})
+		return
+	}
+	if id != userID {
+		context.JSON(http.StatusForbidden, gin.H{"error": "You can only delete your own account"})
+		return
+	}
+
 	user.ID = id
 
 	err := h.service.Update(&user)
@@ -102,6 +132,15 @@ func (h *Handler) update(context *gin.Context) {
 func (h *Handler) delete(context *gin.Context) {
 	id, ok := parseID(context)
 	if !ok {
+		return
+	}
+	userID, ok := authctx.UserID(context)
+	if !ok {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Missing authenticated user"})
+		return
+	}
+	if id != userID {
+		context.JSON(http.StatusForbidden, gin.H{"error": "You can only delete your own account"})
 		return
 	}
 	err := h.service.Delete(id)
