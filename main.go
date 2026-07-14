@@ -46,10 +46,11 @@ func main() {
 
 	userService := users.NewService(userRepo)
 	userHandler := usersrest.NewHandler(userService)
+	authRequired := usersrest.AuthRequired(userService)
 
 	server := gin.Default()
 	api := server.Group("/api/v1/")
-	eventsrest.RegisterRoutes(api, eventHandler)
-	usersrest.RegisterRoutes(api, userHandler)
+	eventsrest.RegisterRoutes(api, eventHandler, authRequired)
+	usersrest.RegisterRoutes(api, userHandler, authRequired)
 	server.Run(":8082") // listen and serve on 0.0.0.0:8082
 }

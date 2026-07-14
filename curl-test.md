@@ -7,13 +7,49 @@
 BASE=http://localhost:8082/api/v1
 ```
 
-## Events
+## Аутентификация
 
-### Создать событие
+Создание/изменение/удаление событий и изменение/удаление пользователей
+требуют заголовок `Authorization: Bearer <token>`. Токен выдаётся при
+логине. Middleware не просто проверяет подпись токена — она ещё раз идёт
+в базу и проверяет, что пользователь из токена всё ещё существует, так
+что токен удалённого пользователя перестаёт работать сразу же, не дожидаясь
+истечения TTL.
+
+```bash
+curl -s -X POST "$BASE/register" \
+  -H 'Content-Type: application/json' \
+  -d '{"email": "alice@gmail.com", "password": "s3cret-pass"}'
+
+TOKEN=$(curl -s -X POST "$BASE/login" \
+  -H 'Content-Type: application/json' \
+  -d '{"email": "alice@gmail.com", "password": "s3cret-pass"}' | jq -r .token)
+echo "$TOKEN"
+```
+
+Без токена или с мусорным токеном — ожидаем `401`:
 
 ```bash
 curl -i -X POST "$BASE/events" \
   -H 'Content-Type: application/json' \
+  -d '{"name":"NoAuth","description":"x","location":"Remote","date_time":"2026-08-01T10:00:00Z","user_id":1}'
+
+curl -i -X POST "$BASE/events" \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer garbage.token.here' \
+  -d '{"name":"BadAuth","description":"x","location":"Remote","date_time":"2026-08-01T10:00:00Z","user_id":1}'
+```
+
+## Events
+
+### Создать событие
+
+Требует `Authorization: Bearer $TOKEN`.
+
+```bash
+curl -i -X POST "$BASE/events" \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{
         "name": "Launch",
         "description": "Test event",
@@ -25,11 +61,15 @@ curl -i -X POST "$BASE/events" \
 
 ### Список событий
 
+Публичный, токен не нужен.
+
 ```bash
 curl -i "$BASE/events"
 ```
 
 ### Событие по id
+
+Публичный, токен не нужен.
 
 ```bash
 curl -i "$BASE/events/1"
@@ -37,9 +77,12 @@ curl -i "$BASE/events/1"
 
 ### Обновить событие
 
+Требует `Authorization: Bearer $TOKEN`.
+
 ```bash
 curl -i -X PUT "$BASE/events/1" \
   -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{
         "name": "Launch v2",
         "description": "Updated",
@@ -51,8 +94,10 @@ curl -i -X PUT "$BASE/events/1" \
 
 ### Удалить событие
 
+Требует `Authorization: Bearer $TOKEN`.
+
 ```bash
-curl -i -X DELETE "$BASE/events/1"
+curl -i -X DELETE "$BASE/events/1" -H "Authorization: Bearer $TOKEN"
 ```
 
 ## Users
@@ -60,6 +105,7 @@ curl -i -X DELETE "$BASE/events/1"
 ### Регистрация
 
 Email проверяется по DNS (MX/A запись) — домен должен реально существовать.
+Публичный, токен не нужен (иначе им было бы невозможно воспользоваться).
 
 ```bash
 curl -i -X POST "$BASE/register" \
@@ -77,6 +123,8 @@ curl -i -X POST "$BASE/register" \
 
 ### Логин
 
+Публичный. Возвращает `token`, который нужен для всех мутирующих запросов.
+
 ```bash
 curl -i -X POST "$BASE/login" \
   -H 'Content-Type: application/json' \
@@ -93,31 +141,37 @@ curl -i -X POST "$BASE/login" \
 
 ### Пользователь по id
 
+Публичный, токен не нужен.
+
 ```bash
 curl -i "$BASE/users/1"
 ```
 
 ### Обновить пользователя
 
-`password` в теле обязателен по валидации (`binding:"required"`), даже
-если сам update меняет только email.
+Требует `Authorization: Bearer $TOKEN`. `password` в теле обязателен по
+валидации (`binding:"required"`), даже если сам update меняет только email.
 
 ```bash
 curl -i -X PUT "$BASE/users/1" \
   -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{"email": "alice2@gmail.com", "password": "s3cret-pass"}'
 ```
 
 ### Удалить пользователя
 
+Требует `Authorization: Bearer $TOKEN`.
+
 ```bash
-curl -i -X DELETE "$BASE/users/1"
+curl -i -X DELETE "$BASE/users/1" -H "Authorization: Bearer $TOKEN"
 ```
 
 ## Сквозной прогон одним куском
 
-Создаёт пользователя и событие, использует их id по цепочке, чистит за собой.
-Требует `jq`.
+Регистрирует пользователя, логинится за токеном, создаёт событие, использует
+id по цепочке, чистит за собой (событие удаляется раньше пользователя из-за
+FOREIGN KEY на events.user_id). Требует `jq`.
 
 ```bash
 BASE=http://localhost:8082/api/v1
@@ -127,17 +181,25 @@ USER_ID=$(curl -s -X POST "$BASE/register" \
   -d '{"email": "bob@gmail.com", "password": "s3cret-pass"}' | jq -r .id)
 echo "created user $USER_ID"
 
-curl -s -X POST "$BASE/login" \
+TOKEN=$(curl -s -X POST "$BASE/login" \
   -H 'Content-Type: application/json' \
-  -d '{"email": "bob@gmail.com", "password": "s3cret-pass"}'
+  -d '{"email": "bob@gmail.com", "password": "s3cret-pass"}' | jq -r .token)
 
 EVENT_ID=$(curl -s -X POST "$BASE/events" \
   -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $TOKEN" \
   -d "{\"name\":\"Launch\",\"description\":\"Test\",\"location\":\"Remote\",\"date_time\":\"2026-08-01T10:00:00Z\",\"user_id\":$USER_ID}" \
   | jq -r .id)
 echo "created event $EVENT_ID"
 
 curl -s "$BASE/events/$EVENT_ID"
-curl -s -X DELETE "$BASE/events/$EVENT_ID"
-curl -s -X DELETE "$BASE/users/$USER_ID"
+
+curl -s -X DELETE "$BASE/events/$EVENT_ID" -H "Authorization: Bearer $TOKEN"
+curl -s -X DELETE "$BASE/users/$USER_ID" -H "Authorization: Bearer $TOKEN"
+
+echo "reusing token after user deletion (expect 401):"
+curl -s -o /dev/null -w '%{http_code}\n' -X POST "$BASE/events" \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $TOKEN" \
+  -d "{\"name\":\"ShouldFail\",\"description\":\"x\",\"location\":\"Remote\",\"date_time\":\"2026-08-01T10:00:00Z\",\"user_id\":$USER_ID}"
 ```

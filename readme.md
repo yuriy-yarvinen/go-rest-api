@@ -23,6 +23,29 @@ set -a && source .env && set +a
 go run main.go
 ```
 
+## Тесты
+
+```sh
+go test ./events/... ./users/... ./utils/...
+```
+
+Не гоняй `go test ./...` целиком: `go build`/`go test` тогда пытается
+пройти и `volumes/postgres/`, а там после `docker-compose up` лежат файлы
+Postgres (сокеты и т.п.), созданные от имени контейнера — обход упадёт с
+`permission denied`. Пакеты с `postgres`/`sqlite`/`redis` в названии тестов
+не содержат (нужна реальная БД/Redis) — покрыты только `events`, `users` и
+`utils`.
+
+Флаги, которые полезны по ходу:
+
+```sh
+go test ./events/... ./users/... ./utils/... -v          # подробный вывод по каждому тесту
+go test ./events/... ./users/... ./utils/... -run JWT     # только тесты, чьё имя матчит regexp
+go test ./events ./users ./users/rest ./utils -cover      # % покрытия (без /... — иначе тулчейн
+                                                            # падает с "no such tool covdata" на
+                                                            # cgo-пакетах без тестов, postgres/sqlite)
+```
+
 ## Docker
 
 Run the API with a Postgres database in containers:

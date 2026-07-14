@@ -23,3 +23,18 @@ func ValidateJWT(tokenString string) (*jwt.Token, error) {
 		return []byte(GetEnv("SECRET_KEY", "sdfjs98sdf9sdfk")), nil
 	})
 }
+
+// UserIDFromToken reads the userID claim set by GenerateJWT out of a token
+// already verified by ValidateJWT. ok is false if the token has no usable
+// userID claim (JSON numbers decode as float64, hence the type assertion).
+func UserIDFromToken(token *jwt.Token) (int64, bool) {
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return 0, false
+	}
+	userID, ok := claims["userID"].(float64)
+	if !ok {
+		return 0, false
+	}
+	return int64(userID), true
+}
