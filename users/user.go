@@ -1,6 +1,7 @@
 package users
 
 import (
+	"encoding/json"
 	"errors"
 )
 
@@ -12,6 +13,19 @@ type User struct {
 	ID       int64  `json:"id"`
 	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required"`
+}
+
+// MarshalJSON omits Password from any JSON output. The struct tag alone
+// only governs field names, not exclusion, so a handler that forgets to
+// clear Password before responding would otherwise leak it (a hash, or
+// worse, the plaintext the client just sent on update). Password is still
+// read normally on the way in — ShouldBindJSON uses the default decoder,
+// which this method doesn't affect.
+func (u User) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		ID    int64  `json:"id"`
+		Email string `json:"email"`
+	}{ID: u.ID, Email: u.Email})
 }
 
 // UserRepository is defined by the domain and implemented by the

@@ -36,8 +36,8 @@ func (r *Repository) Register(user *users.User) error {
 func (r *Repository) Login(user *users.User) error {
 	var stored users.User
 
-	row := r.db.QueryRow("SELECT password FROM users WHERE email = $1", user.Email)
-	err := row.Scan(&stored.Password)
+	row := r.db.QueryRow("SELECT id, password FROM users WHERE email = $1", user.Email)
+	err := row.Scan(&stored.ID, &stored.Password)
 	if errors.Is(err, sql.ErrNoRows) {
 		return users.ErrUserNotFound
 	}

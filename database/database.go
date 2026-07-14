@@ -3,7 +3,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"os"
+	"go-rest-api/utils"
 
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
@@ -18,14 +18,14 @@ var Driver string
 // InitDB opens the database connection selected by the DB_DRIVER env var.
 // Defaults to sqlite so local/dev usage keeps working without extra setup.
 func InitDB() {
-	Driver = getEnv("DB_DRIVER", "sqlite")
+	Driver = utils.GetEnv("DB_DRIVER", "sqlite")
 
 	var err error
 	switch Driver {
 	case "postgres":
 		DB, err = sql.Open("postgres", postgresDSN())
 	case "sqlite":
-		DB, err = sql.Open("sqlite3", getEnv("DB_PATH", "./api.db"))
+		DB, err = sql.Open("sqlite3", utils.GetEnv("DB_PATH", "./api.db"))
 	default:
 		panic(fmt.Sprintf("unknown DB_DRIVER %q (want \"sqlite\" or \"postgres\")", Driver))
 	}
@@ -44,20 +44,13 @@ func InitDB() {
 func postgresDSN() string {
 	return fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		getEnv("DB_HOST", "localhost"),
-		getEnv("DB_PORT", "5432"),
-		getEnv("DB_USER", "postgres"),
-		getEnv("DB_PASSWORD", "postgres"),
-		getEnv("DB_NAME", "go_rest_api"),
-		getEnv("DB_SSLMODE", "disable"),
+		utils.GetEnv("DB_HOST", "localhost"),
+		utils.GetEnv("DB_PORT", "5432"),
+		utils.GetEnv("DB_USER", "postgres"),
+		utils.GetEnv("DB_PASSWORD", "postgres"),
+		utils.GetEnv("DB_NAME", "go_rest_api"),
+		utils.GetEnv("DB_SSLMODE", "disable"),
 	)
-}
-
-func getEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
 }
 
 // CreateTables creates the schema needed by the app, using the syntax

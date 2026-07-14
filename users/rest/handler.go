@@ -30,7 +30,13 @@ func (h *Handler) login(context *gin.Context) {
 		context.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
 		return
 	}
-	context.JSON(http.StatusOK, gin.H{"message": "Login successful"})
+
+	token, err := utils.GenerateJWT(user.Email, user.ID)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate JWT"})
+		return
+	}
+	context.JSON(http.StatusOK, gin.H{"message": "Login successful", "token": token})
 }
 
 func (h *Handler) register(context *gin.Context) {
@@ -47,7 +53,6 @@ func (h *Handler) register(context *gin.Context) {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to register user"})
 		return
 	}
-	user.Password = ""
 	context.JSON(http.StatusCreated, user)
 }
 
