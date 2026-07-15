@@ -94,6 +94,23 @@ curl -i -X PUT "$BASE/events/1" \
       }'
 ```
 
+### Регистрация на событие
+
+```bash
+curl -i -X POST "$BASE/events/1/register" \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Отмена регистрации
+
+```bash
+curl -i -X DELETE "$BASE/events/1/unregister" \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+
 ### Удалить событие
 
 Требует `Authorization: Bearer $TOKEN` **и** владение событием — иначе `403`.
@@ -114,6 +131,8 @@ curl -i -X PUT "$BASE/events/1" \
 
 curl -i -X DELETE "$BASE/events/1" -H "Authorization: Bearer $TOKEN_OTHER"
 ```
+
+
 
 ## Users
 

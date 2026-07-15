@@ -8,11 +8,13 @@ import (
 // mockRepository implements EventRepository with per-call function fields,
 // so each test only wires up the behavior it cares about.
 type mockRepository struct {
-	createFunc  func(*Event) error
-	getAllFunc  func() ([]Event, error)
-	getByIDFunc func(int64) (*Event, error)
-	updateFunc  func(*Event) error
-	deleteFunc  func(int64) error
+	createFunc         func(*Event) error
+	getAllFunc         func() ([]Event, error)
+	getByIDFunc        func(int64) (*Event, error)
+	updateFunc         func(*Event) error
+	deleteFunc         func(int64) error
+	registerUserFunc   func(eventID, userID int64) error
+	unregisterUserFunc func(eventID, userID int64) error
 }
 
 var _ EventRepository = (*mockRepository)(nil)
@@ -22,6 +24,12 @@ func (m *mockRepository) GetAll() ([]Event, error)         { return m.getAllFunc
 func (m *mockRepository) GetByID(id int64) (*Event, error) { return m.getByIDFunc(id) }
 func (m *mockRepository) Update(event *Event) error        { return m.updateFunc(event) }
 func (m *mockRepository) Delete(id int64) error            { return m.deleteFunc(id) }
+func (m *mockRepository) RegisterUserToEvent(eventID, userID int64) error {
+	return m.registerUserFunc(eventID, userID)
+}
+func (m *mockRepository) UnregisterUserFromEvent(eventID, userID int64) error {
+	return m.unregisterUserFunc(eventID, userID)
+}
 
 func TestServiceCreateDelegatesToRepository(t *testing.T) {
 	event := &Event{Name: "Launch"}

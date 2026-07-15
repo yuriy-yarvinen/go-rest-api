@@ -95,6 +95,22 @@ func (r *Repository) Delete(id int64) error {
 	return nil
 }
 
+func (r *Repository) RegisterUserToEvent(eventID, userID int64) error {
+	if err := r.eventRepository.RegisterUserToEvent(eventID, userID); err != nil {
+		return err
+	}
+	r.invalidate(eventID)
+	return nil
+}
+
+func (r *Repository) UnregisterUserFromEvent(eventID, userID int64) error {
+	if err := r.eventRepository.UnregisterUserFromEvent(eventID, userID); err != nil {
+		return err
+	}
+	r.invalidate(eventID)
+	return nil
+}
+
 func (r *Repository) invalidate(id int64) {
 	ctx := context.Background()
 	r.redis.Del(ctx, eventKey(id), allKey)

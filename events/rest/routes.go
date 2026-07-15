@@ -13,5 +13,7 @@ func RegisterRoutes(router *gin.RouterGroup, h *Handler, authRequired gin.Handle
 	authenticated.POST("events", h.create)
 	authenticated.PUT("events/:id", h.update)
 	authenticated.DELETE("events/:id", h.delete)
+	authenticated.POST("events/:id/register", h.registerUser)
+	authenticated.POST("events/:id/unregister", h.unregisterUser)
 
 }

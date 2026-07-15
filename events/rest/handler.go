@@ -2,6 +2,7 @@ package rest
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -144,6 +145,45 @@ func (h *Handler) delete(context *gin.Context) {
 		return
 	}
 	context.JSON(http.StatusOK, gin.H{"message": "Event deleted successfully"})
+}
+
+func (h *Handler) registerUser(context *gin.Context) {
+	id, ok := parseID(context)
+	if !ok {
+		return
+	}
+
+	userID, ok := authctx.UserID(context)
+	if !ok {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Missing authenticated user"})
+		return
+	}
+
+	if err := h.service.RegisterUserToEvent(id, userID); err != nil {
+		fmt.Println("Error registering user to event:", err)
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to register user to event"})
+		return
+	}
+	context.JSON(http.StatusOK, gin.H{"message": "User registered to event successfully"})
+}
+
+func (h *Handler) unregisterUser(context *gin.Context) {
+	id, ok := parseID(context)
+	if !ok {
+		return
+	}
+
+	userID, ok := authctx.UserID(context)
+	if !ok {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Missing authenticated user"})
+		return
+	}
+
+	if err := h.service.UnregisterUserFromEvent(id, userID); err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to unregister user from event"})
+		return
+	}
+	context.JSON(http.StatusOK, gin.H{"message": "User unregistered from event successfully"})
 }
 
 // parseID reads and validates the :id path param. On failure it writes a 400

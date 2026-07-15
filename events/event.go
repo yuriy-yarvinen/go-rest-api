@@ -30,4 +30,6 @@ type EventRepository interface {
 	GetByID(id int64) (*Event, error)
 	Update(event *Event) error
 	Delete(id int64) error
+	RegisterUserToEvent(eventID, userID int64) error
+	UnregisterUserFromEvent(eventID, userID int64) error
 }

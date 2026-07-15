@@ -29,3 +29,11 @@ func (s *Service) Update(event *Event) error {
 func (s *Service) Delete(id int64) error {
 	return s.repo.Delete(id)
 }
+
+func (s *Service) RegisterUserToEvent(eventID, userID int64) error {
+	return s.repo.RegisterUserToEvent(eventID, userID)
+}
+
+func (s *Service) UnregisterUserFromEvent(eventID, userID int64) error {
+	return s.repo.UnregisterUserFromEvent(eventID, userID)
+}

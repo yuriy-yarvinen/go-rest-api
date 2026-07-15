@@ -78,6 +78,47 @@ func (r *Repository) Delete(id int64) error {
 	return affectedOrNotFound(result)
 }
 
+func (r *Repository) RegisterUserToEvent(eventID, userID int64) error {
+	checkQuery := "SELECT id FROM registrations WHERE event_id = $1 AND user_id = $2"
+	var existingID int64
+	err := r.db.QueryRow(checkQuery, eventID, userID).Scan(&existingID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+	if existingID != 0 {
+		return errors.New("user is already registered for this event")
+	}
+
+	const query = `
+		INSERT INTO registrations (event_id, user_id)
+		VALUES ($1, $2)`
+
+	_, errCreate := r.db.Exec(query, eventID, userID)
+	return errCreate
+}
+
+func (r *Repository) UnregisterUserFromEvent(eventID, userID int64) error {
+	checkQuery := "SELECT id FROM registrations WHERE event_id = $1 AND user_id = $2"
+	var existingID int64
+	err := r.db.QueryRow(checkQuery, eventID, userID).Scan(&existingID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+	if existingID == 0 {
+		return errors.New("user is not registered for this event")
+	}
+
+	const query = `
+		DELETE FROM registrations
+		WHERE event_id = $1 AND user_id = $2`
+
+	result, err := r.db.Exec(query, eventID, userID)
+	if err != nil {
+		return err
+	}
+	return affectedOrNotFound(result)
+}
+
 // affectedOrNotFound maps a zero-row UPDATE/DELETE to ErrEventNotFound.
 func affectedOrNotFound(result sql.Result) error {
 	n, err := result.RowsAffected()

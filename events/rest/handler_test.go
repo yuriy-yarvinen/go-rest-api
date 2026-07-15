@@ -14,11 +14,13 @@ import (
 )
 
 type mockRepository struct {
-	createFunc  func(*events.Event) error
-	getAllFunc  func() ([]events.Event, error)
-	getByIDFunc func(int64) (*events.Event, error)
-	updateFunc  func(*events.Event) error
-	deleteFunc  func(int64) error
+	createFunc         func(*events.Event) error
+	getAllFunc         func() ([]events.Event, error)
+	getByIDFunc        func(int64) (*events.Event, error)
+	updateFunc         func(*events.Event) error
+	deleteFunc         func(int64) error
+	registerUserFunc   func(eventID, userID int64) error
+	unregisterUserFunc func(eventID, userID int64) error
 }
 
 var _ events.EventRepository = (*mockRepository)(nil)
@@ -28,6 +30,12 @@ func (m *mockRepository) GetAll() ([]events.Event, error)         { return m.get
 func (m *mockRepository) GetByID(id int64) (*events.Event, error) { return m.getByIDFunc(id) }
 func (m *mockRepository) Update(event *events.Event) error        { return m.updateFunc(event) }
 func (m *mockRepository) Delete(id int64) error                   { return m.deleteFunc(id) }
+func (m *mockRepository) RegisterUserToEvent(eventID, userID int64) error {
+	return m.registerUserFunc(eventID, userID)
+}
+func (m *mockRepository) UnregisterUserFromEvent(eventID, userID int64) error {
+	return m.unregisterUserFunc(eventID, userID)
+}
 
 // fakeAuth stands in for users/rest.AuthRequired in these handler tests: it
 // just stamps the given userID onto the context via authctx, so the
@@ -177,5 +185,51 @@ func TestDeleteAllowsOwner(t *testing.T) {
 	}
 	if !deleted {
 		t.Error("repository Delete was never called")
+	}
+}
+
+func TestRegisterUserToEvent(t *testing.T) {
+	registered := false
+	repo := &mockRepository{
+		registerUserFunc: func(eventID, userID int64) error {
+			registered = true
+			if eventID != 1 || userID != 42 {
+				t.Errorf("RegisterUserToEvent called with eventID=%d, userID=%d; want 1, 42", eventID, userID)
+			}
+			return nil
+		},
+	}
+	router := newTestRouter(NewHandler(events.NewService(repo)), 42)
+
+	rec := doJSONRequest(router, http.MethodPost, "/events/1/register", nil)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if !registered {
+		t.Error("repository RegisterUserToEvent was never called")
+	}
+}
+
+func TestUnregisterUserFromEvent(t *testing.T) {
+	unregistered := false
+	repo := &mockRepository{
+		unregisterUserFunc: func(eventID, userID int64) error {
+			unregistered = true
+			if eventID != 1 || userID != 42 {
+				t.Errorf("UnregisterUserFromEvent called with eventID=%d, userID=%d; want 1, 42", eventID, userID)
+			}
+			return nil
+		},
+	}
+	router := newTestRouter(NewHandler(events.NewService(repo)), 42)
+
+	rec := doJSONRequest(router, http.MethodPost, "/events/1/unregister", nil)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if !unregistered {
+		t.Error("repository UnregisterUserFromEvent was never called")
 	}
 }
